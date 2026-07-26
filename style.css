@@ -1,136 +1,503 @@
+/* ============================================================
+   justkyla.com — ocean sunset interface
+   The moving background is ocean.js (a fixed full-screen canvas).
+   Everything in here is the frosted sea glass that floats on top.
+   ============================================================ */
+
 /* Real crossfade between pages in modern browsers (Chrome/Edge) */
 @view-transition {
     navigation: auto;
 }
 
-/* Fade-and-rise the page content in on every load (works everywhere) */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(12px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+:root {
+    /* ---- palette (see DESIGN-SPEC) ---- */
+    --abyss: #07182E;
+    --deep:  #0E2E4B;
+    --sea:   #1B5F80;
+    --teal:  #3AA3B3;
+    --foam:  #9FE3DC;
+    --sand:  #FFE9CF;
+    --gold:  #FFC978;
+    --peach: #FF9E76;
+    --coral: #F97A6D;
+    --dusk:  #6E4A82;
+    --ink:   #06121F;
+    --paper: #FFF6EA;
+
+    /* ---- motion ---- */
+    --ease:   cubic-bezier(.22, .61, .36, 1);
+    --spring: cubic-bezier(.34, 1.56, .64, 1);
+
+    /* ---- sea glass ----
+       Two stacked layers. The white sheen is the spec's glass recipe; the dark
+       tint underneath is what makes --paper text legal over the *brightest*
+       part of the sunset (see the contrast note further down). */
+    --glass-sheen: linear-gradient(155deg, rgba(255, 255, 255, .17), rgba(255, 255, 255, .06));
+    --glass-tint:  linear-gradient(163deg, rgba(7, 24, 46, .78), rgba(11, 42, 68, .74));
+    --glass-blur:  18px;
+
+    --shadow-soft: 0 1px 2px rgba(6, 18, 31, .45);
+    --column: min(720px, 92vw);
+}
+
+/* ---- background safety net -------------------------------------------------
+   A static sunset stands in before ocean.js runs, and stays if it fails or if
+   WebGL is unavailable. html backgrounds propagate to the viewport, so this
+   covers the whole page; the canvas paints on top of it. */
+html {
+    color-scheme: dark;
+    background:
+        radial-gradient(125% 62% at 50% 74%,
+            rgba(255, 201, 120, .55) 0%,
+            rgba(249, 122, 109, .26) 30%,
+            rgba(7, 24, 46, 0) 64%),
+        linear-gradient(180deg,
+            #241C46   0%,
+            var(--dusk) 20%,
+            var(--coral) 40%,
+            var(--peach) 47%,
+            var(--gold) 52%,
+            var(--sea)  57%,
+            var(--deep) 74%,
+            var(--abyss) 100%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
 }
 
 body {
-    font-family: 'Quicksand', Arial, sans-serif;
-    background-color: #1A2D42;
-    color: #D4D8DD;
-    margin: 20px;
-    animation: fadeInUp 0.5s ease both;
+    margin: 0;
+    /* transparent so the ocean.js canvas is visible underneath the content */
+    background: transparent;
+    font-family: 'Quicksand', 'Trebuchet MS', Arial, sans-serif;
+    color: var(--paper);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
 }
+
+/* ---- the floating column --------------------------------------------------
+   Positioned + z-indexed so it always stacks above the canvas. The page-load
+   animation lives HERE, not on <body>: a transform on body would turn it into
+   a containing block and break the canvas's position:fixed. */
+.page {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    width: var(--column);
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin-inline: auto;
+    padding-block: clamp(1.75rem, 6vh, 4.5rem);
+    display: flex;
+    flex-direction: column;
+    animation: fadeInUp .62s var(--ease) both;
+}
+/* auto block margins float the card in the middle of the water on tall
+   viewports, but collapse to 0 (rather than clipping the top) once the
+   content is taller than the screen — unlike justify-content: center */
+.page > .card { margin-block: auto; }
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* ============================================================
+   FROSTED SEA GLASS
+   Kept to ONE backdrop-filter surface per page (the main card).
+   Everything nested inside it — buttons, project tiles — uses the same
+   visual language but only translucent fills, so we never pay for a
+   second blur pass.
+   ============================================================ */
+.glass {
+    background: var(--glass-sheen), var(--glass-tint);
+    backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, .26);
+    border-radius: 20px;
+    box-shadow:
+        0 10px 34px rgba(6, 18, 31, .34),
+        0 0 60px rgba(255, 201, 120, .09),
+        inset 0 1px 0 rgba(255, 255, 255, .34);
+}
+
+/* ---- CONTRAST, worst case -------------------------------------------------
+   Worst case is the card sitting on the sun itself, so the maths assumes the
+   blurred backdrop is pure white rgb(255,255,255) — nothing the ocean renders
+   can be brighter than that, and saturate() cannot brighten white.
+   Compositing --glass-tint then --glass-sheen over white gives:
+     top corner    (tint .78 + sheen .17) -> rgb( 96,108,122)
+     bottom corner (tint .74 + sheen .06) -> rgb( 88,109,127)
+   Measured against the text colours actually used on the card:
+     #FFF6EA body copy .......... 5.18:1   (needs 4.5)  PASS
+     #FFE9CF h2 subhead ......... 4.70:1   (needs 3.0)  PASS
+     #FFC978 titles/signature ... 3.66:1   (needs 3.0, all >=20px bold) PASS
+   Over the dark water it climbs past 9:1. The tint alphas are deliberately
+   high because the spec's plain white sheen alone lands at only ~3.1:1 over
+   the sun. Do not lighten the tint or raise the sheen without re-running
+   harness/solve.mjs + harness/contrast.mjs.
+   The text-shadow below is extra insurance, not the plan.                    */
+
+/* No backdrop-filter support (older Firefox, some embedded webviews):
+   swap in a near-opaque fill so nothing becomes unreadable. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass {
+        background:
+            linear-gradient(155deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .04)),
+            rgba(14, 46, 75, .84);
+    }
+}
+
+/* ---- ocean.js quality tiers -----------------------------------------------
+   ocean.js stamps high|medium|low|none on <html>. low keeps a hint of frost;
+   none drops the blur entirely and thickens the tint instead, which costs
+   nothing and keeps the contrast figures above valid. */
+html[data-ocean-tier="low"] { --glass-blur: 8px; }
+html[data-ocean-tier="none"] {
+    --glass-tint: linear-gradient(163deg, rgba(7, 24, 46, .86), rgba(11, 42, 68, .82));
+}
+html[data-ocean-tier="none"] .glass {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* ============================================================
+   THE CARD
+   ============================================================ */
+.card {
+    position: relative;
+    padding: clamp(1.65rem, 4.4vw, 2.9rem) clamp(1.35rem, 4.4vw, 3rem) clamp(1.4rem, 3.4vw, 2rem);
+    overflow: hidden;
+}
+
+/* a single warm glint sliding along the top edge, like light off a wave */
+.card::after {
+    content: "";
+    position: absolute;
+    inset: -1px -1px auto -1px;
+    height: 1px;
+    background: linear-gradient(90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 233, 207, .75) 28%,
+        rgba(255, 201, 120, .9) 50%,
+        rgba(159, 227, 220, .6) 74%,
+        rgba(255, 255, 255, 0) 100%);
+    pointer-events: none;
+}
+
+/* ============================================================
+   TYPE
+   ============================================================ */
 h1 {
-    font-family: 'Baloo 2', cursive;
-    font-weight: 700;
-    color: #AAB7B7;
+    font-family: 'Pacifico', 'Baloo 2', cursive;
+    font-weight: 400;
+    font-size: clamp(2.3rem, 7.2vw, 3.35rem);
+    line-height: 1.24;
+    letter-spacing: .005em;
+    color: var(--paper);
     text-align: center;
-    padding-bottom: 12px;
-    border-bottom: 3px solid #8EB69B;
+    margin: 0 0 .35rem;
+    text-shadow:
+        0 2px 4px rgba(6, 18, 31, .45),
+        0 6px 26px rgba(255, 201, 120, .34);
 }
+
 h2 {
-    font-family: 'Baloo 2', cursive;
+    font-family: 'Baloo 2', 'Trebuchet MS', cursive;
     font-weight: 600;
-    color: #1A2D42;
-    background-color: #AAB7B7;
+    font-size: clamp(1.1rem, 2.9vw, 1.38rem);
+    line-height: 1.4;
+    letter-spacing: .015em;
+    color: var(--sand);
     text-align: center;
-    padding: 10px;
-    border-radius: 8px;
+    margin: 0;
+    text-shadow: var(--shadow-soft);
 }
+
 p {
-    font-family: 'Quicksand', sans-serif;
-    font-size: 18px;
-    background-color: #2E4156;
-    padding: 12px;
-    border-radius: 8px;
+    font-family: 'Quicksand', 'Trebuchet MS', sans-serif;
+    font-weight: 500;
+    font-size: clamp(1rem, 2.3vw, 1.075rem);
+    line-height: 1.65;
+    color: var(--paper);
+    text-shadow: var(--shadow-soft);
+    margin: 0 0 1.05rem;
 }
-h3 {
-    color: #AAB7B7;
+p:last-child { margin-bottom: 0; }
+
+/* decorative hairline — a little horizon line */
+.rule {
+    height: 1px;
+    border: 0;
+    margin: clamp(1.15rem, 3vw, 1.65rem) auto clamp(1.25rem, 3.2vw, 1.75rem);
+    background: linear-gradient(90deg,
+        rgba(159, 227, 220, 0) 0%,
+        rgba(159, 227, 220, .5) 22%,
+        rgba(255, 201, 120, .8) 50%,
+        rgba(159, 227, 220, .5) 78%,
+        rgba(159, 227, 220, 0) 100%);
+}
+.rule--soft {
+    margin: clamp(1.3rem, 3.4vw, 1.75rem) auto clamp(.55rem, 1.6vw, .8rem);
+    background: linear-gradient(90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(159, 227, 220, .3) 45%,
+        rgba(255, 201, 120, .42) 60%,
+        rgba(255, 255, 255, 0) 100%);
+}
+
+/* Kyla's signature */
+.signature {
+    font-family: 'Pacifico', cursive;
+    font-weight: 400;
+    font-style: normal;
+    font-size: clamp(1.45rem, 4.4vw, 1.85rem);
+    line-height: 1.5;
+    color: var(--gold);
     text-align: right;
-    font-style: italic;
-    font-weight: normal;
+    margin: 0;
+    text-shadow:
+        0 2px 3px rgba(6, 18, 31, .5),
+        0 0 20px rgba(255, 201, 120, .3);
 }
+
+/* ============================================================
+   BUTTONS — sea glass pebbles
+   ============================================================ */
 .links {
-    text-align: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .85rem;
+    margin-top: clamp(1.5rem, 4vw, 2.1rem);
 }
 
-/* One reusable button style for every button on the site */
 .button {
-    display: inline-block;
-    background-color: #8EB69B;
-    color: #1A2D42;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5em;
+    /* border-box is load-bearing: the phone layout below sets width:100% on
+       these, and with the default content-box the 1.4rem side padding pushed
+       them ~46px wider than the card's content area — the overflow was invisible
+       because .card clips it. */
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: .7rem 1.4rem;
+    font-family: 'Baloo 2', 'Trebuchet MS', cursive;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: .015em;
+    color: var(--paper);
     text-decoration: none;
-    font-weight: bold;
-    padding: 12px 24px;
-    border-radius: 25px;
-    transition: background-color 0.2s ease, transform 0.2s ease;
-}
-.button:hover {
-    background-color: #AAB7B7;
-    transform: scale(1.05);
+    text-shadow: 0 1px 2px rgba(6, 18, 31, .5);
+    border-radius: 999px;
+    border: 1px solid rgba(255, 201, 120, .45);
+    /* warm sheen over a dark tint: #FFF6EA on this reads 5.2:1 even when the
+       glass behind it is sitting on the sun */
+    background:
+        linear-gradient(150deg, rgba(255, 233, 207, .16), rgba(255, 201, 120, .10)),
+        linear-gradient(180deg, rgba(7, 24, 46, .38), rgba(7, 24, 46, .46));
+    box-shadow:
+        0 6px 16px rgba(6, 18, 31, .28),
+        inset 0 1px 0 rgba(255, 255, 255, .24);
+    transition:
+        transform .18s var(--spring),
+        border-color .18s var(--ease),
+        box-shadow .18s var(--ease),
+        background .18s var(--ease);
 }
 
-/* Project cards on the projects page */
-.project-card {
-    background-color: #2E4156;
-    padding: 16px 20px;
-    border-radius: 12px;
-    margin-bottom: 18px;
+.button:hover,
+.button:focus-visible {
+    transform: translateY(-2px) scale(1.025);
+    border-color: rgba(249, 122, 109, .8);
+    background:
+        linear-gradient(150deg, rgba(255, 205, 178, .2), rgba(249, 122, 109, .13)),
+        linear-gradient(180deg, rgba(7, 24, 46, .38), rgba(7, 24, 46, .46));
+    box-shadow:
+        0 11px 24px rgba(6, 18, 31, .34),
+        0 0 26px rgba(249, 122, 109, .26),
+        inset 0 1px 0 rgba(255, 255, 255, .3);
 }
+.button:focus-visible {
+    outline: 2px solid var(--foam);
+    outline-offset: 3px;
+}
+.button:active { transform: translateY(0) scale(.99); }
+
+/* ---- seashell ornaments ---- */
+.shell {
+    flex: none;
+    /* 1.25em rather than ~1.1: the ridge and chamber detail muddies into a blob
+       at 18px on a 1x desktop display, and a couple of extra pixels is the
+       difference between "a shell" and "a peach smudge" */
+    width: 1.25em;
+    height: 1.25em;
+    /* both shells are drawn on a square, art-centred viewBox, so they sit on
+       the label's optical centre without nudging */
+    display: inline-block;
+    vertical-align: -.2em;
+    filter: drop-shadow(0 1px 2px rgba(6, 18, 31, .45));
+    transition: transform .18s var(--spring);
+}
+.button:hover .shell,
+.button:focus-visible .shell {
+    transform: rotate(-9deg) translateY(-1px) scale(1.07);
+}
+
+/* ============================================================
+   PROJECT CARDS — recessed inlays inside the glass card.
+   Deliberately DARKER than the card, never lighter: a lighter tile would
+   push #FFF6EA below 4.5:1 over the bright part of the sunset.
+   ============================================================ */
+.project-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.project-card {
+    position: relative;
+    overflow: hidden;
+    /* title and its action chip share the top row, body copy spans below —
+       source order is untouched, the grid just places them */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "title  action"
+        "body   body";
+    align-items: center;
+    column-gap: .9rem;
+    row-gap: .45rem;
+    padding: 1.1rem 1.2rem 1.15rem;
+    border-radius: 16px;
+    background: linear-gradient(160deg, rgba(7, 24, 46, .2), rgba(7, 24, 46, .32));
+    border: 1px solid rgba(255, 255, 255, .14);
+    box-shadow:
+        0 4px 14px rgba(6, 18, 31, .2),
+        inset 0 1px 0 rgba(255, 255, 255, .16);
+    transition:
+        transform .18s var(--ease),
+        border-color .18s var(--ease),
+        box-shadow .18s var(--ease);
+}
+
+/* a sliver of sunset light down the leading edge, inset so the card's
+   rounded corners don't shave the ends off */
+.project-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 13%;
+    bottom: 13%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(180deg, var(--gold), var(--peach) 55%, var(--coral));
+    box-shadow: 0 0 10px rgba(255, 201, 120, .35);
+}
+
+.project-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(159, 227, 220, .34);
+    box-shadow:
+        0 9px 22px rgba(6, 18, 31, .26),
+        inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+
 .project-title {
-    font-family: 'Baloo 2', cursive;
-    font-weight: 600;
-    color: #8EB69B;
+    grid-area: title;
+    font-family: 'Baloo 2', 'Trebuchet MS', cursive;
+    font-weight: 700;
+    font-size: clamp(1.1rem, 2.7vw, 1.28rem);
+    line-height: 1.3;
+    letter-spacing: .01em;
+    color: var(--gold);
     text-align: left;
     font-style: normal;
-    margin: 0 0 6px 0;
-}
-/* Paragraphs INSIDE a card shouldn't have their own box */
-.project-card p {
-    background-color: transparent;
-    padding: 0;
-    font-size: 16px;
     margin: 0;
-}
-/* Smaller buttons inside project cards, pushed to the right edge */
-.project-card .button {
-    display: block;
-    width: fit-content;
-    margin-left: auto;
-    margin-top: 12px;
-    padding: 7px 16px;
-    font-size: 14px;
+    text-shadow: 0 1px 2px rgba(6, 18, 31, .5);
 }
 
-/* ----- Pixel girl mascot pinned to the bottom-left corner of the screen ----- */
-.pixel-girl {
-    position: fixed;      /* pin to the viewport, not the page flow */
-    left: 12px;
-    bottom: 12px;
-    width: 129px;        /* wider viewBox includes room for the waving arm */
-    height: auto;
-    pointer-events: none; /* purely decorative */
-    overflow: visible;    /* let the waving hand swing past the edge */
-    image-rendering: pixelated;
-    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
-    animation: girl-bob 3s ease-in-out infinite;
-    z-index: 10;
+/* paragraphs inside a card don't get their own box */
+.project-card p {
+    grid-area: body;
+    font-size: clamp(.96rem, 2.2vw, 1.02rem);
+    line-height: 1.62;
+    margin: 0;
 }
-/* Gentle up-and-down idle bob for the whole character */
-@keyframes girl-bob {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-4px); }
+
+/* small action chips inside project cards, sitting on the title row */
+.project-card .button {
+    grid-area: action;
+    margin: 0;
+    padding: .45rem 1.05rem;
+    font-size: .9rem;
+    min-height: 36px;
 }
-/* Her raised arm swings back and forth = waving.
-   The wave itself is animated with <animateTransform> inside the SVG
-   (see the .wave group in the HTML) for reliable cross-browser pivoting. */
-/* Smaller on phones so she doesn't crowd the text */
-@media (max-width: 600px) {
-    .pixel-girl { width: 106px; }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 700px) {
+    :root {
+        /* mobile GPUs choke on wide blurs */
+        --glass-blur: 10px;
+    }
+    .card::after { opacity: .8; }
 }
-/* Respect users who prefer no motion */
+
+@media (max-width: 480px) {
+    .card {
+        padding: 1.5rem 1.2rem 1.4rem;
+        border-radius: 18px;
+    }
+    /* full-width buttons = unmissable tap targets */
+    .links {
+        flex-direction: column;
+        align-items: stretch;
+        gap: .7rem;
+    }
+    .links .button { width: 100%; }
+    /* stack the chip under the copy on phones so the title never gets
+       squeezed, and give it a full 44px tap target */
+    .project-card {
+        padding: 1rem 1.05rem 1.05rem;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "title"
+            "body"
+            "action";
+        row-gap: .5rem;
+    }
+    .project-card .button {
+        min-height: 44px;
+        justify-self: end;
+        margin-top: .35rem;
+    }
+    .signature { text-align: center; }
+}
+
+/* ============================================================
+   REDUCED MOTION — genuinely calmer: fades only, no movement.
+   ============================================================ */
 @media (prefers-reduced-motion: reduce) {
-    .pixel-girl, .pixel-girl .wave { animation: none; }
+    .page {
+        animation: fadeIn .4s linear both;
+    }
+    .shell,
+    .button,
+    .project-card {
+        transition: border-color .18s linear, box-shadow .18s linear, background .18s linear;
+    }
+    .button:hover,
+    .button:focus-visible,
+    .button:active,
+    .project-card:hover,
+    .button:hover .shell,
+    .button:focus-visible .shell {
+        transform: none;
+    }
 }
