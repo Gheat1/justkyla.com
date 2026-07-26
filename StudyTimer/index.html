@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cute Study Timer ⋆.ೃ࿔🌸*:･</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Nunito', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #fce4ec, #f8bbd0, #e1bee7);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.8s ease;
+        }
+
+        body.break-mode {
+            background: linear-gradient(135deg, #e8f5e9, #b2dfdb, #c8e6c9);
+        }
+
+        .card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(10px);
+            border-radius: 28px;
+            padding: 40px 34px 30px;
+            width: 340px;
+            box-shadow: 0 12px 40px rgba(233, 100, 150, 0.18);
+            text-align: center;
+            border: 2.5px solid #ad1457;
+            transition: border-color 0.5s, box-shadow 0.5s;
+        }
+
+        body.break-mode .card {
+            border-color: #1b5e20;
+            box-shadow: 0 12px 40px rgba(56, 142, 60, 0.18);
+        }
+
+        /* ── Dainty dashed inner frame ── */
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 7px;
+            border: 2px dashed #f48fb1;
+            border-radius: 20px;
+            pointer-events: none;
+            transition: border-color 0.5s;
+        }
+
+        body.break-mode .card::before { border-color: #80cbc4; }
+
+        /* ── Little flowers in the corners ── */
+        .corner {
+            position: absolute;
+            font-size: 1.55rem;
+            line-height: 1;
+            pointer-events: none;
+            animation: sway 4s ease-in-out infinite;
+        }
+
+        .corner::before { content: '🌸'; }
+        body.break-mode .corner::before { content: '🌼'; }
+
+        .corner.tl { top: -15px; left: -15px; }
+        .corner.tr { top: -15px; right: -15px; animation-delay: 1s; }
+        .corner.bl { bottom: -15px; left: -15px; animation-delay: 2s; }
+        .corner.br { bottom: -15px; right: -15px; animation-delay: 3s; }
+
+        @keyframes sway {
+            0%, 100% { transform: rotate(-12deg); }
+            50%      { transform: rotate(12deg); }
+        }
+
+        /* ── Swishy flourish divider ── */
+        .flourish {
+            font-size: 1rem;
+            letter-spacing: 2px;
+            color: #f06292;
+            margin: -6px 0 18px;
+            transition: color 0.5s;
+        }
+
+        body.break-mode .flourish { color: #66bb6a; }
+
+        .flourish::before { content: '꙳ ⋆ ˚｡⋆ ❀ ⋆｡˚ ⋆ ꙳'; }
+
+        .mode-badge {
+            display: inline-block;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 4px 14px;
+            border-radius: 50px;
+            background: #fce4ec;
+            color: #e91e8c;
+            margin-bottom: 10px;
+            transition: background 0.5s, color 0.5s;
+        }
+
+        body.break-mode .mode-badge {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #c2185b;
+            margin-bottom: 6px;
+        }
+
+        body.break-mode h1 { color: #2e7d32; }
+
+        .emoji-row {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+        }
+
+        /* ── Timer display ── */
+        #timer-display {
+            font-size: 4rem;
+            font-weight: 800;
+            font-family: 'Courier New', monospace;
+            color: #ad1457;
+            letter-spacing: 4px;
+            margin: 8px 0 24px;
+            transition: color 0.5s;
+        }
+
+        body.break-mode #timer-display { color: #1b5e20; }
+
+        /* ── Input row ── */
+        .inputs {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 22px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .input-group label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #888;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .input-group input {
+            width: 80px;
+            padding: 8px 10px;
+            border: 2px solid #f8bbd0;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            font-weight: 700;
+            text-align: center;
+            color: #ad1457;
+            background: #fff5f8;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus { border-color: #e91e8c; }
+
+        /* ── Buttons ── */
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: none;
+            padding: 11px 22px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: transform 0.1s ease, opacity 0.2s, box-shadow 0.2s;
+        }
+
+        button:active { transform: scale(0.93); }
+
+        #btn-start {
+            background: linear-gradient(135deg, #f06292, #e91e8c);
+            color: white;
+            box-shadow: 0 4px 14px rgba(233, 30, 140, 0.35);
+        }
+
+        #btn-start:hover { box-shadow: 0 6px 18px rgba(233, 30, 140, 0.45); }
+
+        #btn-reset {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+
+        #btn-skip {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        body.break-mode #btn-start {
+            background: linear-gradient(135deg, #66bb6a, #388e3c);
+            box-shadow: 0 4px 14px rgba(56, 142, 60, 0.35);
+        }
+
+        /* ── Progress ring ── */
+        .ring-wrap {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 8px;
+        }
+
+        svg.ring { transform: rotate(-90deg); }
+
+        #ring-bg { stroke: #fce4ec; }
+        body.break-mode #ring-bg { stroke: #e8f5e9; }
+
+        #ring-fill {
+            stroke: #e91e8c;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s linear, stroke 0.5s;
+        }
+
+        body.break-mode #ring-fill { stroke: #388e3c; }
+
+        /* ── Minimize / expand toggle ── */
+        #btn-mini {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            font-size: 1rem;
+            line-height: 1;
+            border-radius: 9px;
+            background: #fce4ec;
+            color: #c2185b;
+            z-index: 5;
+        }
+
+        body.break-mode #btn-mini { background: #e8f5e9; color: #2e7d32; }
+
+        /* ── Compact "focus" mode: small floating timer ── */
+        .card.mini {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: auto;
+            padding: 16px 20px 14px;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .card.mini:active { cursor: grabbing; }
+
+        .card.mini::before { inset: 4px; border-radius: 14px; }
+
+        .card.mini .mode-badge,
+        .card.mini h1,
+        .card.mini .emoji-row,
+        .card.mini .flourish,
+        .card.mini .inputs,
+        .card.mini .ring-wrap,
+        .card.mini #btn-reset { display: none; }
+
+        .card.mini #btn-mini { top: 6px; right: 7px; width: 22px; height: 22px; font-size: 0.85rem; }
+
+        .card.mini #timer-display {
+            font-size: 2.1rem;
+            letter-spacing: 2px;
+            margin: 10px 0 12px;
+        }
+
+        .card.mini .buttons { gap: 7px; }
+
+        .card.mini button {
+            padding: 7px 14px;
+            font-size: 0.82rem;
+            border-radius: 11px;
+        }
+
+        .card.mini .corner { font-size: 1rem; }
+        .card.mini .corner.tl { top: -9px; left: -9px; }
+        .card.mini .corner.tr { top: -9px; right: -9px; }
+        .card.mini .corner.bl { bottom: -9px; left: -9px; }
+        .card.mini .corner.br { bottom: -9px; right: -9px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="corner tl"></span>
+        <span class="corner tr"></span>
+        <span class="corner bl"></span>
+        <span class="corner br"></span>
+
+        <button id="btn-mini" title="Minimize">–</button>
+
+        <div class="mode-badge" id="mode-badge">Study Time</div>
+        <h1 id="card-title">Cute Study Timer 🌸</h1>
+        <div class="emoji-row" id="emoji-row">📚 ✨ 🍓</div>
+        <div class="flourish"></div>
+
+        <div class="ring-wrap">
+            <svg class="ring" width="100" height="100" viewBox="0 0 100 100">
+                <circle id="ring-bg"   cx="50" cy="50" r="42" fill="none" stroke-width="8"/>
+                <circle id="ring-fill" cx="50" cy="50" r="42" fill="none" stroke-width="8"
+                    stroke-dasharray="263.9" stroke-dashoffset="0"/>
+            </svg>
+        </div>
+
+        <div id="timer-display">25:00</div>
+
+        <div class="inputs">
+            <div class="input-group">
+                <label>Study (min)</label>
+                <input type="number" id="study-min" value="25" min="1" max="99">
+            </div>
+            <div class="input-group">
+                <label>Break (min)</label>
+                <input type="number" id="break-min" value="5" min="1" max="99">
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button id="btn-start">▶ Start</button>
+            <button id="btn-reset">↺ Reset</button>
+            <button id="btn-skip">⏭ Skip</button>
+        </div>
+    </div>
+
+    <script>
+        const display     = document.getElementById('timer-display');
+        const btnStart    = document.getElementById('btn-start');
+        const btnReset    = document.getElementById('btn-reset');
+        const btnSkip     = document.getElementById('btn-skip');
+        const studyInput  = document.getElementById('study-min');
+        const breakInput  = document.getElementById('break-min');
+        const modeBadge   = document.getElementById('mode-badge');
+        const cardTitle   = document.getElementById('card-title');
+        const emojiRow    = document.getElementById('emoji-row');
+        const ringFill    = document.getElementById('ring-fill');
+        const btnMini     = document.getElementById('btn-mini');
+        const card        = document.querySelector('.card');
+        const CIRCUMF     = 263.9;
+
+        let isStudy    = true;
+        let running    = false;
+        let remaining  = 0;
+        let total      = 0;
+        let intervalId = null;
+
+        // ── Soft chime (gentle bell-like arpeggio via Web Audio) ──
+        let audioCtx = null;
+
+        function chimeNote(ctx, freq, startTime, duration) {
+            // bell tone = a couple of soft sine partials with a slow decay
+            [1, 2.01].forEach((mult, i) => {
+                const osc  = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq * mult;
+
+                const peak = i === 0 ? 0.22 : 0.07;
+                gain.gain.setValueAtTime(0.0001, startTime);
+                gain.gain.exponentialRampToValueAtTime(peak, startTime + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            });
+        }
+
+        function playChime() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const now = audioCtx.currentTime;
+                // soft pentatonic arpeggio: C5 · E5 · G5 · C6
+                const notes = [523.25, 659.25, 783.99, 1046.5];
+                notes.forEach((f, i) => chimeNote(audioCtx, f, now + i * 0.18, 2.4));
+            } catch (e) { /* audio not available */ }
+        }
+
+        function fmt(secs) {
+            const m = String(Math.floor(secs / 60)).padStart(2, '0');
+            const s = String(secs % 60).padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function setRing(secs) {
+            const pct  = total > 0 ? secs / total : 1;
+            const offset = CIRCUMF * (1 - pct);
+            ringFill.style.strokeDashoffset = offset;
+        }
+
+        function applyMode() {
+            if (isStudy) {
+                document.body.classList.remove('break-mode');
+                modeBadge.textContent = 'Study Time';
+                cardTitle.textContent = 'Cute Study Timer 🌸';
+                emojiRow.textContent  = '📚 ✨ 🍓';
+            } else {
+                document.body.classList.add('break-mode');
+                modeBadge.textContent = 'Break Time!';
+                cardTitle.textContent = 'Take a Break 🌿';
+                emojiRow.textContent  = '🍵 🌈 ☁️';
+            }
+        }
+
+        function loadDuration() {
+            const mins = parseInt(isStudy ? studyInput.value : breakInput.value) || 1;
+            total      = mins * 60;
+            remaining  = total;
+        }
+
+        function updateDisplay() {
+            display.textContent = fmt(remaining);
+            setRing(remaining);
+        }
+
+        function tick() {
+            if (remaining <= 0) {
+                clearInterval(intervalId);
+                running = false;
+                btnStart.textContent = '▶ Start';
+                playChime();
+                isStudy = !isStudy;
+                applyMode();
+                loadDuration();
+                updateDisplay();
+                return;
+            }
+            remaining--;
+            updateDisplay();
+        }
+
+        btnStart.addEventListener('click', () => {
+            if (!running) {
+                if (remaining === 0) loadDuration();
+                running = true;
+                btnStart.textContent = '⏸ Pause';
+                intervalId = setInterval(tick, 1000);
+            } else {
+                running = false;
+                btnStart.textContent = '▶ Start';
+                clearInterval(intervalId);
+            }
+        });
+
+        btnReset.addEventListener('click', () => {
+            clearInterval(intervalId);
+            running = false;
+            btnStart.textContent = '▶ Start';
+            isStudy = true;
+            applyMode();
+            loadDuration();
+            updateDisplay();
+        });
+
+        btnSkip.addEventListener('click', () => {
+            clearInterval(intervalId);
+            running = false;
+            btnStart.textContent = '▶ Start';
+            isStudy = !isStudy;
+            applyMode();
+            loadDuration();
+            updateDisplay();
+        });
+
+        // ── Minimize / expand the timer into a small floating widget ──
+        btnMini.addEventListener('click', () => {
+            const mini = card.classList.toggle('mini');
+            btnMini.textContent = mini ? '⤢' : '–';
+            btnMini.title       = mini ? 'Expand' : 'Minimize';
+            if (!mini) {
+                // back to centered: clear any dragged position
+                card.style.left = card.style.top = '';
+                card.style.right = card.style.bottom = '';
+            }
+        });
+
+        // ── Drag the mini timer anywhere on screen ──
+        let dragging = false, dragDX = 0, dragDY = 0;
+
+        card.addEventListener('mousedown', (e) => {
+            if (!card.classList.contains('mini')) return;
+            if (e.target.closest('button')) return;   // let buttons work normally
+            dragging = true;
+            const rect = card.getBoundingClientRect();
+            dragDX = e.clientX - rect.left;
+            dragDY = e.clientY - rect.top;
+            card.style.right = card.style.bottom = 'auto';
+            card.style.left  = rect.left + 'px';
+            card.style.top   = rect.top  + 'px';
+            e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            card.style.left = (e.clientX - dragDX) + 'px';
+            card.style.top  = (e.clientY - dragDY) + 'px';
+        });
+
+        window.addEventListener('mouseup', () => { dragging = false; });
+
+        // Re-sync display when inputs change (only when stopped)
+        [studyInput, breakInput].forEach(inp => {
+            inp.addEventListener('change', () => {
+                if (!running) { loadDuration(); updateDisplay(); }
+            });
+        });
+
+        // Init
+        applyMode();
+        loadDuration();
+        updateDisplay();
+    </script>
+</body>
+</html>

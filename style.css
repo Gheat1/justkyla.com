@@ -1,0 +1,136 @@
+/* Real crossfade between pages in modern browsers (Chrome/Edge) */
+@view-transition {
+    navigation: auto;
+}
+
+/* Fade-and-rise the page content in on every load (works everywhere) */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+body {
+    font-family: 'Quicksand', Arial, sans-serif;
+    background-color: #1A2D42;
+    color: #D4D8DD;
+    margin: 20px;
+    animation: fadeInUp 0.5s ease both;
+}
+h1 {
+    font-family: 'Baloo 2', cursive;
+    font-weight: 700;
+    color: #AAB7B7;
+    text-align: center;
+    padding-bottom: 12px;
+    border-bottom: 3px solid #8EB69B;
+}
+h2 {
+    font-family: 'Baloo 2', cursive;
+    font-weight: 600;
+    color: #1A2D42;
+    background-color: #AAB7B7;
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+}
+p {
+    font-family: 'Quicksand', sans-serif;
+    font-size: 18px;
+    background-color: #2E4156;
+    padding: 12px;
+    border-radius: 8px;
+}
+h3 {
+    color: #AAB7B7;
+    text-align: right;
+    font-style: italic;
+    font-weight: normal;
+}
+.links {
+    text-align: center;
+}
+
+/* One reusable button style for every button on the site */
+.button {
+    display: inline-block;
+    background-color: #8EB69B;
+    color: #1A2D42;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 12px 24px;
+    border-radius: 25px;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.button:hover {
+    background-color: #AAB7B7;
+    transform: scale(1.05);
+}
+
+/* Project cards on the projects page */
+.project-card {
+    background-color: #2E4156;
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+}
+.project-title {
+    font-family: 'Baloo 2', cursive;
+    font-weight: 600;
+    color: #8EB69B;
+    text-align: left;
+    font-style: normal;
+    margin: 0 0 6px 0;
+}
+/* Paragraphs INSIDE a card shouldn't have their own box */
+.project-card p {
+    background-color: transparent;
+    padding: 0;
+    font-size: 16px;
+    margin: 0;
+}
+/* Smaller buttons inside project cards, pushed to the right edge */
+.project-card .button {
+    display: block;
+    width: fit-content;
+    margin-left: auto;
+    margin-top: 12px;
+    padding: 7px 16px;
+    font-size: 14px;
+}
+
+/* ----- Pixel girl mascot pinned to the bottom-left corner of the screen ----- */
+.pixel-girl {
+    position: fixed;      /* pin to the viewport, not the page flow */
+    left: 12px;
+    bottom: 12px;
+    width: 129px;        /* wider viewBox includes room for the waving arm */
+    height: auto;
+    pointer-events: none; /* purely decorative */
+    overflow: visible;    /* let the waving hand swing past the edge */
+    image-rendering: pixelated;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+    animation: girl-bob 3s ease-in-out infinite;
+    z-index: 10;
+}
+/* Gentle up-and-down idle bob for the whole character */
+@keyframes girl-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+}
+/* Her raised arm swings back and forth = waving.
+   The wave itself is animated with <animateTransform> inside the SVG
+   (see the .wave group in the HTML) for reliable cross-browser pivoting. */
+/* Smaller on phones so she doesn't crowd the text */
+@media (max-width: 600px) {
+    .pixel-girl { width: 106px; }
+}
+/* Respect users who prefer no motion */
+@media (prefers-reduced-motion: reduce) {
+    .pixel-girl, .pixel-girl .wave { animation: none; }
+}
